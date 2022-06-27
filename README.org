@@ -1,3 +1,5 @@
+#+OPTIONS: num:t toc:2
+
 This repository is an introduction to LaTeXmk as presented in Highlights'22.  It
 consists of two main parts:
 - Basics; LaTeXmk, primarily, is a script to run LaTeX/BibTeX correctly, watch
