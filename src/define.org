@@ -1,0 +1,6 @@
+This is an Org-mode file that contains "literate programming" of a config file.
+For instance, this defines a macro =myvar=:
+
+#+begin_src latex
+  \def\myvar{myvar}
+#+end_src

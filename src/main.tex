@@ -1,0 +1,45 @@
+%% var: x=first
+%% var: x=second
+%% var: name=Paul Erdös
+%% var: name=John Doe
+\documentclass{article}
+
+\usepackage{subfiles}
+
+\input{define.orgtex}
+
+
+\usepackage{pdftexcmds}
+\makeatletter
+\let\pdfstrcmp\pdf@strcmp
+\makeatother
+
+\def\myx{\pgfkeysvalueof{/vars/x}}
+
+\begin{document}
+
+Hello world. \myvar{} is defined in \texttt{define.org}.
+
+> This is to be verbatimed,
+> Together with that line.
+
+> Lorem all the ipsums.
+
+The value of \(x\) is \myx.
+
+
+\def\name{\pgfkeysvalueof{/vars/name}}
+Dear \name,
+
+\ifnum\pdfstrcmp{\name}{Paul Erdös}=0
+  I admire your work very much.
+\else
+  Your work definitely exists.
+\fi
+
+
+\subfile{intro}
+
+\subfile{concl}
+
+\end{document}

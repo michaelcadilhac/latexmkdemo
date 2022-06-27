@@ -1,0 +1,333 @@
+This repository is an introduction to LaTeXmk as presented in Highlights'22.  It
+consists of two main parts:
+- Basics; LaTeXmk, primarily, is a script to run LaTeX/BibTeX correctly, watch
+  for changes, and rerun as needed.
+- Advanced; LaTeXmk is a Perl script that sources the configuration files before
+  executing, hence sky is the limit.
+
+* LaTeXmk basics
+
+  Let's start with a simple file:
+  #+begin_src LaTeX
+\documentclass{article}
+\begin{document}
+Hello world.
+\end{document}
+  #+end_src
+
+  =latexmk= will produce a PDF for it in one sweep command:
+  #+begin_example
+$ latexmk -pdf example.tex
+Latexmk: This is Latexmk, John Collins, 20 November 2021, version: 4.76.
+Latexmk: applying rule 'pdflatex'...
+Rule 'pdflatex': File changes, etc:
+   Changed files, or newly in use since previous run(s):
+      'example.tex'
+------------
+Run number 1 of rule 'pdflatex'
+------------
+------------
+Running 'pdflatex  -halt-on-error -recorder  "example.tex"'
+------------
+[... snip ...]
+Latexmk: Examining 'example.log'
+=== TeX engine is 'pdfTeX'
+Latexmk: Log file says output to 'example.pdf'
+Latexmk: All targets (example.pdf) are up-to-date
+  #+end_example
+
+  The snipped part is the output of =pdflatex=.  =latexmk= will:
+  - Check if =example.tex= needs to be reprocessed by looking at all the
+    dependencies that showed up
+
+
+** LaTeXmk only compiles when needed
+
+   Consider the file =example.tex=:
+   #+begin_src LaTeX
+     \documentclass{article}
+     \begin{document}
+     Dep: \input{dep.tex}
+     \end{document}
+   #+end_src
+   The file =dep.tex= contains some text.  The first time =latexmk= is run on
+   =example.tex=, it will record all the dependencies of =example.tex=,
+   including here the file =dep.tex=.  When =latexmk= is invoked next, it will
+   check that one of these files have changed (using hashing), and restart the
+   compilation only if needed:
+
+   #+begin_example
+     $ latexmk -pdf example.tex
+     Latexmk: This is Latexmk, John Collins, 20 November 2021, version: 4.76.
+     Latexmk: applying rule 'pdflatex'...
+     Rule 'pdflatex': File changes, etc:
+        Changed files, or newly in use since previous run(s):
+           'example.tex'
+     ------------
+     Run number 1 of rule 'pdflatex'
+     ------------
+     ------------
+     Running 'pdflatex  -halt-on-error -recorder  "example.tex"'
+     ------------
+     [...snip...]
+     Latexmk: Examining 'example.log'
+     === TeX engine is 'pdfTeX'
+     Latexmk: Log file says output to 'example.pdf'
+     Latexmk: All targets (example.pdf) are up-to-date
+     $ latexmk -pdf example.tex
+     Latexmk: This is Latexmk, John Collins, 20 November 2021, version: 4.76.
+     Nothing to do
+     Latexmk: All targets (example.pdf) are up-to-date
+     $ echo 'new content' > dep.tex
+     $ latexmk -pdf example.tex
+     Latexmk: This is Latexmk, John Collins, 20 November 2021, version: 4.76.
+     Latexmk: applying rule 'pdflatex'...
+     Rule 'pdflatex': File changes, etc:
+        Changed files, or newly in use since previous run(s):
+           'dep.tex'
+     ------------
+     Run number 1 of rule 'pdflatex'
+     ------------
+     ------------
+     Running 'pdflatex  -halt-on-error -recorder  "example.tex"'
+     ------------
+     [...snip...]
+     Latexmk: Examining 'example.log'
+     === TeX engine is 'pdfTeX'
+     Latexmk: Log file says output to 'example.pdf'
+     Latexmk: All targets (example.pdf) are up-to-date
+   #+end_example
+   Note that on the last run, =latexmk= detects a change in =dep.tex=.
+
+** LaTeXmk runs =pdflatex=, =bibtex=, the right number of times
+
+   We've all been culprit of forgetting to run =pdflatex= or =bibtex= before
+   sending a paper.  =latexmk= will make sure that they are called the right
+   number of times.  Consider this =example.tex= which writes the =bib= file on
+   the fly:
+   #+begin_src latex
+     \documentclass{article}
+
+     \usepackage{filecontents}
+     \begin{filecontents}{\jobname.bib}
+     @book{goossens93,
+         author    = "Michel Goossens and Frank Mittelbach and Alexander Samarin",
+         title     = "The LaTeX Companion",
+         year      = "1993",
+     }
+     \end{filecontents}
+
+     \begin{document}
+     Lorem ipsum~\cite{goossens93}.
+     \bibliographystyle{plain}
+     \bibliography{\jobname} 
+     \end{document}
+   #+end_src
+
+   Running =latexmk= gives:
+   #+begin_example
+     Rc files read:
+       /home/micha/.latexmkrc
+     Latexmk: This is Latexmk, John Collins, 20 November 2021, version: 4.76.
+     Latexmk: applying rule 'pdflatex'...
+     Rule 'pdflatex': File changes, etc:
+        Changed files, or newly in use since previous run(s):
+           'example.tex'
+     ------------
+     Run number 1 of rule 'pdflatex'
+     ------------
+     ------------
+     Running 'pdflatex  -halt-on-error -recorder  "example.tex"'
+     ------------
+     [...snip...]
+     Transcript written on example.log.
+     Latexmk: Examining 'example.log'
+     === TeX engine is 'pdfTeX'
+     Latexmk: Missing bbl file 'example.bbl' in following:
+      No file example.bbl.
+     Latexmk: Log file says output to 'example.pdf'
+     Latexmk: List of undefined refs and citations:
+       Citation `goossens93' on page 1 undefined on input line 12
+     Latexmk: Found bibliography file(s) [example.bib]
+     Latexmk: applying rule 'bibtex example'...
+     Rule 'bibtex example': File changes, etc:
+        Changed files, or newly in use since previous run(s):
+           'example.aux'
+     ------------
+     Run number 1 of rule 'bibtex example'
+     ------------
+     ------------
+     Running 'bibtex  "example.aux"'
+     ------------
+     [...snip...]
+     Latexmk: applying rule 'pdflatex'...
+     Rule 'pdflatex': File changes, etc:
+        Changed files, or newly in use since previous run(s):
+           'example.aux'
+           'example.bbl'
+     ------------
+     Run number 2 of rule 'pdflatex'
+     ------------
+     ------------
+     Running 'pdflatex  -halt-on-error -recorder  "example.tex"'
+     ------------
+     [...snip...]
+     Latexmk: Examining 'example.log'
+     === TeX engine is 'pdfTeX'
+     Latexmk: Found input bbl file 'example.bbl'
+     Latexmk: References changed.
+     Latexmk: Log file says output to 'example.pdf'
+     Latexmk: List of undefined refs and citations:
+       Citation `goossens93' on page 1 undefined on input line 12
+     Latexmk: Found bibliography file(s) [example.bib]
+     Latexmk: applying rule 'bibtex example'...
+     Rule 'bibtex example': File changes, etc:
+        Changed files, or newly in use since previous run(s):
+           'example.aux'
+     ------------
+     Run number 2 of rule 'bibtex example'
+     ------------
+     ------------
+     Running 'bibtex  "example.aux"'
+     ------------
+     [...snip...]
+     Latexmk: applying rule 'pdflatex'...
+     Rule 'pdflatex': File changes, etc:
+        Changed files, or newly in use since previous run(s):
+           'example.aux'
+     ------------
+     Run number 3 of rule 'pdflatex'
+     ------------
+     ------------
+     Running 'pdflatex  -halt-on-error -recorder  "example.tex"'
+     ------------
+     [...snip...]
+     Latexmk: Examining 'example.log'
+     === TeX engine is 'pdfTeX'
+     Latexmk: Found input bbl file 'example.bbl'
+     Latexmk: Log file says output to 'example.pdf'
+     Latexmk: Found bibliography file(s) [example.bib]
+     Latexmk: All targets (example.pdf) are up-to-date
+   #+end_example
+
+** LaTeXmk can watch for changes and run continuously
+
+   One key feature of =latexmk= is that it can track the dependencies of your
+   LaTeX document and reprocess it when needed.  With support from a PDF viewer
+   that refreshes automatically (=evince= for instance, avoid Acrobat Reader),
+   the command =latexmk -c= will continuously update the document.
+
+** LaTeXmk can use XeLaTeX, LuaTeX, biber, ...
+
+   LaTeXmk is highly customizable (it's actually a Perl script) and comes
+   readily equipped with support for the main alternatives you may want.  In
+   particular, one can ask to use XeLaTeX with =latexmk -xelatex= and similarly
+   for LuaTeX.
+
+** LaTeXmk can start a viewer
+
+   With =LaTeXmk -pv=, for /preview/, LaTeXmk will start a viewer for the
+   produced document.  With continuous update mode (=latexmk -pvc=), it  will
+   then try to do the right when recompiling the document; in particular,
+   Acrobat Reader locks the document, so an update cannot be made.
+
+** LaTeXmk can help you keep your folders clean
+
+   It's as easy as specifying =latexmk -outdir=build/= for all the files
+   produced by LaTeX/BibTeX to be neatly kept in one subfolder.  No more clutter
+   in your source folder!
+
+* LaTeXmk configuration
+
+  After playing a bit with LaTeXmk, one may feel that the default options are
+  not superbly convenient.  LaTeXmk reads its configuration files from
+  home (=~/.latexmkrc=) and from the current directory (=./latexmkrc=).  The
+  options are documented in [[https://www.mankier.com/1/latexmk][the man page]], are aplenty, and =latexmk= can also be
+  extended using Perl; a whole new world.
+
+  In my =~/.latexmkrc=, I have:
+
+  #+begin_src perl
+    $pdf_mode = 4;  # generate PDFs, use LuaLaTeX
+    $clean_ext = 'vtc nav snm vrb';  # also clean those extensions when invoking latexmk -c
+    @default_files = ('main.tex'); # the default is to process all .tex files
+    $do_cd = 1; # this cds to the directory of the file before processing
+    $lualatex = 'lualatex --shell-escape %O %S'; # allow shell escapes in lualatex, useful for producing figures on the fly
+    $pdf_previewer = "start evince";
+    $pdf_update_method = 0; # my viewer can update the file on its own
+    push @ARGV, "-halt-on-error"; # stop processing at first error
+  #+end_src
+
+  As a result, in particular, when I run =latexmk -pvc=, this continuously
+  compiles my file with LuaTeX and also starts a viewer with =evince=.
+
+  Since any code in there is evaluated by LaTeXmk as Perl code, we can also add
+  some customization that the authors didn't plan for.  For instance, this
+  snippet puts the output of LaTeXmk in yellow, while the output of LaTeX/BibTeX
+  is kept in white:
+  #+begin_src perl
+    ## Set the color of nonlatex outputs.
+    use Term::ANSIColor;
+    $color = 'yellow';
+    print color($color);
+
+    ## Copypasta of Run_msg from latexmk with colors
+    {
+        no warnings 'redefine';
+        sub Run_msg {
+            # Same as Run, but give message about my running
+            print color('reset');
+            warn_running( "Running '$_[0]'" );
+            my ($pid, $return) = Run($_[0]);
+            print color($color);
+            return ($pid, $return);
+        } #END Run_msg
+    }
+  #+end_src
+
+** A more advanced configuration
+
+   The file at [[https://github.com/michaelcadilhac/latexmkdemo/latexmkrc][the root of this repository]] contains a configuration that I
+   integrate to any paper I write.  It expects the source files to be in the
+   =src/= folder and extra files can be put in =lib/= or =img/=.  See the main
+   file [[https://github.com/michaelcadilhac/latexmkdemo/src/main.tex][main.tex]] for example usage.
+
+   I recommend you read the configuration file and take inspiration of some of
+   the features therein, so that you can customize your own.  The main features
+   of this configuration are as follows:
+
+   - =latexmk @file= will process the file =src/file.tex=, putting all the
+     produced files, including the PDF, in the =_build/= folder.
+   - =latexmk @list= prints all the possible targets (i.e., files in =src/= with
+     a =documentclass=).
+   - ~latexmk @file.xyz=value~ creates a PDF ~_build/file.xyz=value.pdf~ which
+     is =src/file.tex= evaluated with =value= accessible as
+     =\pgfkeysvalueof{/vars/xyz}=.  This is useful when using the same TeX file
+     for different configurations.  I use that for exams (a variable indicates
+     which file contains the multiple-choice questions and I have a handful of
+     different randomizations of them) and for mailing (whether it be "Dear
+     =NAME=" or a whole paragraph that depends on =NAME=:
+     #+begin_src LaTeX
+       \def\name{\pgfkeysvalueof{/vars/name}}
+
+       Dear \name,
+
+       \ifnum\pdfstrcmp{\name}{Paul Erdös}=0
+         I admire your work very much.
+       \else
+         Your work definitely exists.
+       \fi
+     #+end_src
+   - Files with the suffix =.org= (in Org-mode) are automagically converted to a
+     TeX file using Babel tangling --- this is an example of custom dependency a
+     la Makefile.  See the example file [[https://github.com/michaelcadilhac/latexmkdemo/src/define.org][define.org]] which gets compiled to
+     [[https://github.com/michaelcadilhac/latexmkdemo/src/define.orgtex][define.orgtex]], in turn included in [[https://github.com/michaelcadilhac/latexmkdemo/src/main.tex][main.tex]].
+   - Most of the above is accomplished with a bit of Perl within LaTeXmk's
+     configuration file and by evaluating a /different/ TeX file that will
+     =\input= the original TeX file.  This further allows to add anything as a
+     preamble, including the treatment of "variables".  Similarly, before
+     processing any file, Lua code can be executed.  For example, this can
+     install a LuaTeX preprocessor in order to modify the input file.  [[https://github.com/michaelcadilhac/latexmkdemo/lib/verbatim.lua][In the
+     example given]], any group of lines that is prefixed with =>= is inserted in
+     a =verbatim= environment.  Again, using LuaTeX, sky's the limit.
+     
