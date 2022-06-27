@@ -1,4 +1,4 @@
-#+OPTIONS: num:t toc:2
+#+OPTIONS: num:t
 
 This repository is an introduction to LaTeXmk as presented in Highlights'22.  It
 consists of two main parts:
@@ -6,6 +6,18 @@ consists of two main parts:
   for changes, and rerun as needed.
 - Advanced; LaTeXmk is a Perl script that sources the configuration files before
   executing, hence sky is the limit.
+
+
+* Table of contents                                                   :TOC:
+- [[#latexmk-basics][LaTeXmk basics]]
+  - [[#latexmk-only-compiles-when-needed][LaTeXmk only compiles when needed]]
+  - [[#latexmk-runs-pdflatex-bibtex-the-right-number-of-times][LaTeXmk runs =pdflatex=, =bibtex=, the right number of times]]
+  - [[#latexmk-can-watch-for-changes-and-run-continuously][LaTeXmk can watch for changes and run continuously]]
+  - [[#latexmk-can-use-xelatex-luatex-biber-][LaTeXmk can use XeLaTeX, LuaTeX, biber, ...]]
+  - [[#latexmk-can-start-a-viewer][LaTeXmk can start a viewer]]
+  - [[#latexmk-can-help-you-keep-your-folders-clean][LaTeXmk can help you keep your folders clean]]
+- [[#latexmk-configuration][LaTeXmk configuration]]
+  - [[#a-more-advanced-configuration][A more advanced configuration]]
 
 * LaTeXmk basics
 
