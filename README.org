@@ -122,13 +122,13 @@ Latexmk: All targets (example.pdf) are up-to-date
    #+begin_src latex
      \documentclass{article}
 
-     \begin{filecontents*}{\jobname.bib}
+     \begin{filecontents}[overwrite]{\jobname.bib}
      @book{goossens93,
          author    = "Michel Goossens and Frank Mittelbach and Alexander Samarin",
          title     = "The LaTeX Companion",
          year      = "1993",
      }
-     \end{filecontents*}
+     \end{filecontents}
 
      \begin{document}
      Lorem ipsum~\cite{goossens93}.
