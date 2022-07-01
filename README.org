@@ -224,13 +224,6 @@ Latexmk: All targets (example.pdf) are up-to-date
      Latexmk: All targets (example.pdf) are up-to-date
    #+end_example
 
-** LaTeXmk can watch for changes and run continuously
-
-   One key feature of =latexmk= is that it can track the dependencies of your
-   LaTeX document and reprocess it when needed.  With support from a PDF viewer
-   that refreshes automatically (=evince= for instance, avoid Acrobat Reader),
-   the command =latexmk -c= will continuously update the document.
-
 ** LaTeXmk can use XeLaTeX, LuaTeX, biber, ...
 
    LaTeXmk is highly customizable (it's actually a Perl script) and comes
@@ -244,6 +237,13 @@ Latexmk: All targets (example.pdf) are up-to-date
    produced document.  With continuous update mode (=latexmk -pvc=), it  will
    then try to do the right when recompiling the document; in particular,
    Acrobat Reader locks the document, so an update cannot be made.
+
+** LaTeXmk can watch for changes and run continuously
+
+   One key feature of =latexmk= is that it can track the dependencies of your
+   LaTeX document and reprocess it when needed.  With support from a PDF viewer
+   that refreshes automatically (=evince= for instance, avoid Acrobat Reader),
+   the command =latexmk -pvc= will continuously update the document.
 
 ** LaTeXmk can help you keep your folders clean
 
