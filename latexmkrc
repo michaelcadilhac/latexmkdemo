@@ -101,7 +101,7 @@ $bibtex_use = 2;  # run BibTeX/biber when appears necessary
 $clean_ext = 'vtc nav snm vrb';  # also clean those extensions when invoking latexmk -c
 @default_files = ('_build/main.tex');
 $do_cd = 1;
-$lualatex = 'lualatex --shell-escape %O %S';
+$lualatex = 'lualatex --shell-escape %O ./%S'; # do_cd=1 implies that './' is correct; some lualatex versions need this in order to search for the file at the correct place.
 
 add_cus_dep('org', 'orgtex', 0, 'orgtex');
 sub orgtex {
