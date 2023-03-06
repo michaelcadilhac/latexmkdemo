@@ -6,7 +6,7 @@ if (! -e "_build") {
     mkdir ("_build");
 }
 
-if (! -e "_build/master.tex") {
+sub create_build_file {
     my $master = <<'END';
 \RequirePackage{pgfkeys,xstring}
 \pgfqkeys{/vars}{.unknown/.code={\pgfkeyssetvalue{\pgfkeyscurrentkey}{#1}}}
@@ -36,7 +36,7 @@ if (! -e "_build/master.tex") {
 \expandafter\pgfqkeys\expandafter{\expandafter\varpath\expandafter}\expandafter{\args}
 \RequirePackage{iftex}
 \ifLuaTeX
-  \RequirePackage{luacode}
+  \RequirePackage{luacode,luapackageloader}
   \begin{luacode}
     require "lfs"
     
@@ -47,18 +47,16 @@ if (! -e "_build/master.tex") {
         end
       end
     end
-    loadall ('../lib')
+    loadall ('lib')
   \end{luacode}
 \fi
-\input{../src/\filename.tex}
+\input{src/\filename.tex}
 END
-    open(FH, '>', "_build/master.tex") or die $!;
+    open(FH, '>', "_build/${_[0]}") or die $!;
     print FH $master;
     close(FH);
+    system ("find src/ -name '*.tex' | sort | sed 's/^/%% /' >> '_build/${_[0]}'");
 }
-
-## Remove current symlinks to master.tex
-system ("find _build -type l -exec rm '{}' \\;");
 
 sub all_targets {
     system("find src -name '*.tex' -exec grep -l documentclass '{}' \\; |
@@ -67,7 +65,10 @@ sub all_targets {
            done | sed 's|^src/\\(.*\\)\\.tex\\(.*\\)|@\\1\\2|' | " . $_[0]);
 }
 
-$has_link = 0;
+## Clear previous tex files to avoid weird inclusions (especially with subfiles package)
+system("find _build -name '*.tex' -exec rm '{}' \\;");
+
+$has_file = 0;
 for (@ARGV) {
     if ($_ eq "\@list") {
         all_targets ("sort");
@@ -82,30 +83,42 @@ for (@ARGV) {
         s/^@//;
         $f=$_;
         s/^/_build\//;
-        system("ln -f -s master.tex \"_build/$f\"");
-        $has_link = 1;
+        create_build_file ("$f");
+        $has_file = 1;
     }
 }
 
-if (! $has_link) {
-    system ("ln -f -s master.tex _build/main.tex;");
+if (! $has_file) {
+    create_build_file ("main.tex");
 }
 
-$ENV{'TEXINPUTS'}='../src:../lib:../img:./:';
-$ENV{'BIBINPUTS'}='../src:';
-$ENV{'BSTINPUTS'}='../lib:../src:';
+$ENV{'TEXINPUTS'}='src:lib:img:';
+$ENV{'BIBINPUTS'}='src:../src';
+$ENV{'BSTINPUTS'}='lib:src:';
 
 $recorder = 1;  # try to use the .fls to notice changed files
 $pdf_mode = 4;  # generate PDFs, not DVIs, use lualatex
 $bibtex_use = 2;  # run BibTeX/biber when appears necessary
 $clean_ext = 'vtc nav snm vrb';  # also clean those extensions when invoking latexmk -c
 @default_files = ('_build/main.tex');
-$do_cd = 1;
-$lualatex = 'lualatex --shell-escape %O ./%S'; # do_cd=1 implies that './' is correct; some lualatex versions need this in order to search for the file at the correct place.
+$out_dir = '_build/';
+
+$lualatex = 'lualatex --shell-escape %O ./%S'; # Explicitly say ./, which is consistent with do_cd; some versions of lualatex search for %S in TEXINPUTS, so get the src/ one first.
 
 add_cus_dep('org', 'orgtex', 0, 'orgtex');
 sub orgtex {
-  $dir = dirname($_[0]);
-  $file = basename($_[0]);
-  system ("emacs --batch --eval \"(progn (require 'org) (org-babel-tangle-file \\\"$dir/$file.org\\\" \\\"$dir/${file}.orgtex\\\"))\"");
+    sleep (1);
+
+    print ("opening ${_[0]}.org");
+    open(my $F, '<', "${_[0]}.org") or die $!;
+    my $text = join('', <$F>);
+    close $F;
+
+    open(DST, '>', "${_[0]}.orgtex") or die $!;
+
+    while ($text =~ /^\s*#\+BEGIN_SRC.*?\n(.*?)\n\s*#\+END_SRC/msig) {
+        print DST "$1\n";
+    }
+    close(DST);
+    return 0;
 }
